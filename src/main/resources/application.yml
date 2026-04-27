@@ -1,1 +1,16 @@
-spring.application.name=emporia
+spring:
+  application:
+    name: emporia-engine
+  datasource:
+    url: jdbc:postgresql://localhost:5432/emporia_db
+    username: postgres
+    password: 1234 # <-- Update this to your local PG password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update # Automatically generates/updates your DB tables
+    show-sql: true     # Prints SQL to terminal so you can verify queries
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
