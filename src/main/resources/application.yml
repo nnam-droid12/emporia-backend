@@ -4,13 +4,31 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/emporia_db
     username: postgres
-    password: 1234 # <-- Update this to your local PG password
+    password: 1234
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update # Automatically generates/updates your DB tables
-    show-sql: true     # Prints SQL to terminal so you can verify queries
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+application:
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expiration: 86400000
+
+
+nokia:
+  network-as-code:
+    api-key: "97a8ec07a2msh75217dc4adf67f9p103432jsn972c31569f9a"
+    base-url: "https://networkascode.nokia.io/api/v1"
+
+
+
+cloud:
+  gcp:
+    project-id: "nixora-project"
