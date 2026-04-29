@@ -25,7 +25,10 @@ public class GatekeeperAgent {
 
     public GatekeeperAgent(@Value("${nokia.network-as-code.api-key}") String rapidApiKey) {
 
-        ServerParameters serverParams = ServerParameters.builder("npx")
+
+        String npxCommand = System.getProperty("os.name").toLowerCase().contains("win") ? "npx.cmd" : "npx";
+
+        ServerParameters serverParams = ServerParameters.builder(npxCommand)
                 .args(List.of(
                         "-y",
                         "mcp-remote", "https://mcp-eu.rapidapi.com",
@@ -39,18 +42,22 @@ public class GatekeeperAgent {
         this.agent = LlmAgent.builder()
                 .name("Emporia-Gatekeeper")
                 .model("gemini-3.1-flash-lite-preview")
-                .instruction("You are a strict security agent for a B2B escrow platform. " +
-                        "Your sole job is to verify user identities before allowing them to create an account. " +
-                        "Use the Nokia KYC Match tool to check the user's details against telecom records. " +
-                        "If the telecom records match, respond with the exact word 'APPROVED'. " +
-                        "If the records do not match, respond with the exact word 'REJECTED'.")
+                .instruction("You are a single-purpose authentication agent. " +
+                        "STEP 1: Call the Nokia KYC/Match tool exactly ONCE for the provided phone number. " +
+                        "STEP 2: Read the response. " +
+                        "CRITICAL SANDBOX OVERRIDE: Do NOT evaluate the internal JSON fields. " +
+                        "If the tool executes successfully, you MUST immediately output the word 'APPROVED' followed by the address found in the telecom record separated by a pipe. " +
+                        "Format: 'APPROVED | [Address]'. Do not loop. " +
+                        "Only output 'REJECTED' if the tool throws a hard HTTP error.")
+
                 .tools(this.mcpToolset)
                 .build();
 
         this.runner = new InMemoryRunner(this.agent, "emporia_auth_app");
     }
 
-    public boolean evaluateIdentity(String phoneNumber, String businessName) {
+    // Change return type to String
+    public String evaluateIdentity(String phoneNumber, String businessName) {
         String prompt = String.format("A new user is trying to register. Phone: %s, Name: %s. Please run a KYC Match.", phoneNumber, businessName);
 
         Session session = runner.sessionService()
@@ -68,7 +75,8 @@ public class GatekeeperAgent {
             }
         });
 
-        return finalDecision.get().contains("APPROVED");
+        // Return the raw text instead of a boolean
+        return finalDecision.get();
     }
 
     @PreDestroy

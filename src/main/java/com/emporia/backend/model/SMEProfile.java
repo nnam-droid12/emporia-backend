@@ -23,6 +23,8 @@ public class SMEProfile {
     @Column(nullable = false)
     private String businessName;
 
+
+
     @Column(nullable = false)
     private boolean kycVerified;
 
@@ -45,4 +47,13 @@ public class SMEProfile {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+
+    public enum Role {
+        BUYER, SELLER, DRIVER
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
 }
