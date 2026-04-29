@@ -47,6 +47,9 @@ public class EscrowTransaction {
     // Payment Data
     private String paystackReference;
 
+    @Column(length = 6)
+    private String deliveryOtp;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
