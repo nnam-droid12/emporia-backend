@@ -1,13 +1,12 @@
 package com.emporia.backend.mcp;
 
-import com.google.adk.tools.Annotations.Schema;
-import com.google.adk.tools.FunctionTool;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.HttpClientErrorException;
 
 @Slf4j
 @Component
@@ -18,25 +17,18 @@ public class NokiaCamaraTools {
     private String nokiaApiKey;
 
     private final RestClient restClient = RestClient.create();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public boolean verifyKycMatch(
-            @Schema(description = "The phone number of the user, must include country code") String phoneNumber,
-            @Schema(description = "The business name claimed by the user") String businessName) {
-
+    public String verifyKycMatch(String phoneNumber, String businessName) {
         log.info("Executing REAL Nokia KYC Check for phone: {} and business: {}", phoneNumber, businessName);
 
         try {
-
+            // Hackathon Sandbox bypass
             String jsonPayload;
             if ("+99999991000".equals(phoneNumber)) {
-                log.info("Test number detected: Injecting full RapidAPI sandbox payload");
                 jsonPayload = "{\"phoneNumber\":\"+99999991000\",\"idDocument\":\"66666666q\",\"name\":\"Federica Sanchez Arjona\",\"givenName\":\"Federica\",\"familyName\":\"Sanchez Arjona\",\"nameKanaHankaku\":\"federica\",\"nameKanaZenkaku\":\"Ｆｅｄｅｒｉｃａ\",\"middleNames\":\"Sanchez\",\"familyNameAtBirth\":\"YYYY\",\"address\":\"Tokyo-to Chiyoda-ku Iidabashi 3-10-10\",\"streetName\":\"Nicolas Salmeron\",\"streetNumber\":\"4\",\"postalCode\":\"1028460\",\"region\":\"Tokyo\",\"locality\":\"ZZZZ\",\"country\":\"JP\",\"houseNumberExtension\":\"VVVV\",\"birthdate\":\"1978-08-22\",\"email\":\"abc@example.com\",\"gender\":\"OTHER\"}";
             } else {
-                jsonPayload = String.format(
-                        "{\"phoneNumber\":\"%s\", \"name\":\"%s\"}",
-                        phoneNumber,
-                        businessName
-                );
+                jsonPayload = String.format("{\"phoneNumber\":\"%s\", \"name\":\"%s\"}", phoneNumber, businessName);
             }
 
             String response = restClient.post()
@@ -48,25 +40,28 @@ public class NokiaCamaraTools {
                     .retrieve()
                     .body(String.class);
 
-            log.info("Nokia Network Response: {}", response);
+            // Fast, reliable Java parsing
+            if (response != null && (response.contains("\"nameMatch\":\"true\"") || response.contains("\"idDocumentMatch\":\"true\"") || response.contains("\"nameMatch\": \"true\"") || response.contains("\"idDocumentMatch\": \"true\""))) {
 
-            return response != null && (
-                    response.contains("\"nameMatch\":\"true\"") ||
-                            response.contains("\"nameMatch\": \"true\"") ||
-                            response.contains("\"idDocumentMatch\":\"true\"") ||
-                            response.contains("\"idDocumentMatch\": \"true\"")
-            );
+                // Try to extract address if it exists in the dummy payload
+                String address = "Address verified via Telecom";
+                if ("+99999991000".equals(phoneNumber)) {
+                    try {
+                        JsonNode rootNode = objectMapper.readTree(jsonPayload);
+                        if (rootNode.has("address")) {
+                            address = rootNode.get("address").asText();
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not parse address from dummy payload");
+                    }
+                }
+                return "APPROVED | " + address;
+            }
+            return "REJECTED";
 
-        } catch (HttpClientErrorException e) {
-            log.error("Nokia HTTP Error ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
-            return false;
         } catch (Exception e) {
             log.error("Nokia CAMARA API Call Failed: {}", e.getMessage());
-            return false;
+            return "REJECTED";
         }
-    }
-
-    public FunctionTool getKycTool() {
-        return FunctionTool.create(this, "verifyKycMatch");
     }
 }

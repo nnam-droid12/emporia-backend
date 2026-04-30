@@ -1,7 +1,8 @@
 package com.emporia.backend.api;
 
 import com.emporia.backend.model.SMEProfile;
-import com.emporia.backend.orchestrator.GatekeeperAgent;
+// Import the new tool
+import com.emporia.backend.mcp.NokiaCamaraTools;
 import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.security.JwtService;
 import lombok.AllArgsConstructor;
@@ -21,7 +22,8 @@ public class AuthController {
 
     private final SMEProfileRepository profileRepository;
     private final JwtService jwtService;
-    private final GatekeeperAgent gatekeeperAgent;
+    // Inject the fast REST client instead of the AI Agent
+    private final NokiaCamaraTools nokiaCamaraTools;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
@@ -32,17 +34,15 @@ public class AuthController {
             );
         }
 
-        String agentDecision = gatekeeperAgent.evaluateIdentity(request.getPhoneNumber(), request.getBusinessName());
+        // Lightning-fast REST call (takes milliseconds, not minutes)
+        String decision = nokiaCamaraTools.verifyKycMatch(request.getPhoneNumber(), request.getBusinessName());
 
-        if (!agentDecision.contains("APPROVED")) {
+        if (!decision.contains("APPROVED")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new AuthResponse(null, "KYC Verification Failed via Nokia.", null, null, null));
         }
 
-        String extractedAddress = "Address not found";
-        if (agentDecision.contains("|")) {
-            extractedAddress = agentDecision.split("\\|")[1].trim();
-        }
+        String extractedAddress = decision.split("\\|")[1].trim();
 
         SMEProfile profile = profileRepository.findByPhoneNumber(request.getPhoneNumber())
                 .orElseGet(() -> {
