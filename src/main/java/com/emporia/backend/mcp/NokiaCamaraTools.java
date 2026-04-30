@@ -56,7 +56,7 @@ public class NokiaCamaraTools {
             String jsonPayload = String.format("{\"phoneNumber\":\"%s\", \"maxAge\": 240}", phoneNumber);
 
             String response = restClient.post()
-                    .uri("https://network-as-code.p-eu.rapidapi.com/passthrough/camara/v1/sim-swap/v0.1/check")
+                    .uri("https://network-as-code.p-eu.rapidapi.com/passthrough/camara/sim-swap/v0.4/check")
                     .header("x-rapidapi-key", nokiaApiKey)
                     .header("x-rapidapi-host", RAPID_API_HOST)
                     .header("Content-Type", "application/json")
@@ -78,7 +78,8 @@ public class NokiaCamaraTools {
             String jsonPayload = String.format("{\"phoneNumber\":\"%s\"}", phoneNumber);
 
             String response = restClient.post()
-                    .uri("https://network-as-code.p-eu.rapidapi.com/passthrough/camara/v1/number-verification/v0.1/verify")
+                    // UPDATED: Changed to the correct v0.3 CAMARA endpoint
+                    .uri("https://network-as-code.p-eu.rapidapi.com/passthrough/camara/number-verification/v0.3/verify")
                     .header("x-rapidapi-key", nokiaApiKey)
                     .header("x-rapidapi-host", RAPID_API_HOST)
                     .header("Content-Type", "application/json")
