@@ -78,7 +78,6 @@ public class NokiaCamaraTools {
             String jsonPayload = String.format("{\"phoneNumber\":\"%s\"}", phoneNumber);
 
             String response = restClient.post()
-                    // UPDATED: Changed to the correct v0.3 CAMARA endpoint
                     .uri("https://network-as-code.p-eu.rapidapi.com/passthrough/camara/number-verification/v0.3/verify")
                     .header("x-rapidapi-key", nokiaApiKey)
                     .header("x-rapidapi-host", RAPID_API_HOST)
