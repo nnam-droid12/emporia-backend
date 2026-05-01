@@ -2,9 +2,10 @@ spring:
   application:
     name: emporia-engine
   datasource:
-    url: jdbc:postgresql://localhost:5432/emporia_db
-    username: postgres
-    password: 1234
+    # Notice the ${VARIABLE:default} syntax here
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/emporia_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

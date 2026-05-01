@@ -1,0 +1,49 @@
+steps:
+  # Step 1 — Build Docker image tagged with commit SHA and latest
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - -t
+      - '$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/emporia-engine:$COMMIT_SHA'
+      - -t
+      - '$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/emporia-engine:latest'
+      - .
+
+  # Step 2 — Push both tags to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - push
+      - '--all-tags'
+      - '$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/emporia-engine'
+
+  # Step 3 — Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - emporia-engine
+      - --image=$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/emporia-engine:$COMMIT_SHA
+      - --region=$_REGION
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=1Gi # Java apps need slightly more memory than Python
+      - --cpu=1
+      - --timeout=3600
+      # Injecting the Aiven Database Variables directly into Cloud Run
+      - --set-env-vars=DB_URL=jdbc:postgresql://emporiadb-william-a1e3.a.aivencloud.com:28739/defaultdb?sslmode=require,DB_USERNAME=avnadmin,DB_PASSWORD=$_DB_PASSWORD
+
+# Substitution defaults
+substitutions:
+  _AR_REGION: us-central1
+  _AR_REPO: emporia-repo
+  _REGION: us-central1
+
+# Retain both tags in Artifact Registry image history
+images:
+  - '$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/emporia-engine:$COMMIT_SHA'
+  - '$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/emporia-engine:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

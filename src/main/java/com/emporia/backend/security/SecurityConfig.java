@@ -17,7 +17,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll() // Open login endpoints
+                        .requestMatchers("/api/v1/auth/**", "/api/v1/trade/**").permitAll() // Open login endpoints
                         .anyRequest().authenticated()                   // Lock everything else
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

@@ -32,7 +32,10 @@ public class AuthController {
 
         if (nokiaCamaraTools.hasRecentSimSwap(request.getPhoneNumber())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "SECURITY ALERT: Recent SIM Swap detected. Seller account frozen."));
+                    .body(Map.of(
+                            "swapped", true,
+                            "error", "SECURITY ALERT: Recent SIM Swap detected. Please use a different number. Account frozen."
+                    ));
         }
 
         String decision = nokiaCamaraTools.verifyKycMatch(request.getPhoneNumber(), request.getBusinessName());
@@ -71,7 +74,9 @@ public class AuthController {
 
         if (!nokiaCamaraTools.verifyPhoneNumber(request.getPhoneNumber())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Phone Number Verification Failed."));
+                    .body(Map.of(
+                            "swapped", true,
+                            "error", "Phone Number Verification Failed."));
         }
 
         SMEProfile profile = profileRepository.findByPhoneNumber(request.getPhoneNumber())
@@ -105,7 +110,9 @@ public class AuthController {
 
         if (nokiaCamaraTools.hasRecentSimSwap(request.getPhoneNumber())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "SECURITY ALERT: Recent SIM Swap detected. Driver account frozen for investigation."));
+                    .body(Map.of(
+                            "swapped", true,
+                            "error", "SECURITY ALERT: Recent SIM Swap detected. Driver account frozen for investigation."));
         }
 
         if (!nokiaCamaraTools.verifyPhoneNumber(request.getPhoneNumber())) {
@@ -147,6 +154,6 @@ public class AuthController {
     public static class DriverLoginRequest {
         private String phoneNumber;
         private String businessName;
-        private String deliveryCode;
+        private String linkCode;
     }
 }
