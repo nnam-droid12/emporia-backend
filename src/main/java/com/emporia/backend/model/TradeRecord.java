@@ -1,85 +1,84 @@
 package com.emporia.backend.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "trade_records")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class TradeRecord {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @Column(unique = true)
+    private String tradeId;
+
+    @ManyToOne
     @JoinColumn(name = "seller_id", nullable = false)
     private SMEProfile seller;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "buyer_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "buyer_id")
     private SMEProfile buyer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "driver_id")
-    private SMEProfile driver; // Nullable until Seller assigns them
+    private SMEProfile driver;
 
-    // The Goods & Logistics
-    @Column(nullable = false)
+    // Trade Details
     private String goodsType;
-
-    @Column(nullable = false)
     private Integer quantity;
-
-    @Column(nullable = false)
-    private BigDecimal amount;
-
     private LocalDate deliveryDate;
     private LocalTime deliveryTime;
 
-    // The Payout Details
-    @Column(nullable = false)
-    private String sellerAccountNumber;
+    // Seller's Payout Account
+    private String accountNumber;
+    private String accountName;
+    private String bankName;
 
-    @Column(nullable = false)
-    private String sellerBankName;
+    // Map Coordinates
+    private String deliveryAddress;
+    private Double latitude;
+    private Double longitude;
 
-    // The Security Handshake
-    @Column(length = 6)
-    private String deliveryOtp; // The code the Buyer gives the Driver
+    // Escrow Payment Tracking
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
+
+    public enum PaymentStatus {
+        PENDING,
+        ONE_THIRD_FUNDED,
+        HALF_FUNDED,
+        FULLY_FUNDED,
+        RELEASED
+    }
+
+    // Logistics Tracking
+    @Enumerated(EnumType.STRING)
+    private TradeStatus tradeStatus;
 
     public enum TradeStatus {
-        PENDING_BUYER_PAYMENT,
-        FUNDED_IN_ESCROW,
-        ASSIGNED_TO_DRIVER,
+        CREATED,
+        BUYER_JOINED,
+        DRIVER_ASSIGNED,
         IN_TRANSIT,
-        DELIVERED,
-        PAYOUT_COMPLETED
+        DELIVERED
     }
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TradeStatus status;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    public void prePersist() {
+        if(this.paymentStatus == null) this.paymentStatus = PaymentStatus.PENDING;
+        if(this.tradeStatus == null) this.tradeStatus = TradeStatus.CREATED;
     }
 }
