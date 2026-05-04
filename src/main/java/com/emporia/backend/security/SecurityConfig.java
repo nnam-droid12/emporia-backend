@@ -24,9 +24,12 @@ public class SecurityConfig {
 
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/trade/**").permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/api/v1/trade/**",
+                                "/error"
+                        ).permitAll()
 
-                        // NEW: Whitelist Swagger UI and OpenAPI Docs
                         .requestMatchers(
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",

@@ -7,6 +7,7 @@ import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.repository.TradeInviteRepository;
 import com.emporia.backend.repository.TradeRecordRepository;
 import com.emporia.backend.security.JwtService;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -187,7 +188,11 @@ public class TradeController {
     public static class CreateTradeRequest {
         private String goodsType;
         private Integer quantity;
+
+        @JsonFormat(pattern = "yyyy-MM-dd")
         private LocalDate deliveryDate;
+
+        @JsonFormat(pattern = "HH:mm:ss")
         private LocalTime deliveryTime;
         private String accountNumber;
         private String accountName;
