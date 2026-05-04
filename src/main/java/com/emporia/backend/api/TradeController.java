@@ -78,7 +78,7 @@ public class TradeController {
                 "tradeId", savedTrade.getTradeId(),
                 "paymentStatus", savedTrade.getPaymentStatus().name(),
                 "inviteCode", uniqueCode,
-                "deepLinkUrl", "https://emporia-app.com/onboard?invite=" + uniqueCode
+                "deepLinkUrl", "https://emporia-frontend.vercel.app/buyer/onboarding?invite=" + uniqueCode
         ));
     }
 
