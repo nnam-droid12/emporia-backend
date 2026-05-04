@@ -26,7 +26,7 @@ public class TradeInvite {
     @Column(nullable = false)
     private boolean isUsed;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "trade_record_id")
     private TradeRecord tradeRecord;
 
