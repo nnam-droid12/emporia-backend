@@ -26,6 +26,10 @@ public class TradeInvite {
     @Column(nullable = false)
     private boolean isUsed;
 
+    @OneToOne
+    @JoinColumn(name = "trade_record_id")
+    private TradeRecord tradeRecord;
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
@@ -34,7 +38,6 @@ public class TradeInvite {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        // Invites expire after 48 hours to create urgency
         expiresAt = LocalDateTime.now().plusDays(2);
     }
 }

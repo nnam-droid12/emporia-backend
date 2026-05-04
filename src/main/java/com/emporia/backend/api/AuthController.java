@@ -3,8 +3,10 @@ package com.emporia.backend.api;
 import com.emporia.backend.mcp.NokiaCamaraTools;
 import com.emporia.backend.model.SMEProfile;
 import com.emporia.backend.model.TradeInvite;
+import com.emporia.backend.model.TradeRecord;
 import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.repository.TradeInviteRepository;
+import com.emporia.backend.repository.TradeRecordRepository;
 import com.emporia.backend.security.JwtService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class AuthController {
     private final TradeInviteRepository inviteRepository;
     private final JwtService jwtService;
     private final NokiaCamaraTools nokiaCamaraTools;
+    private final TradeRecordRepository tradeRepository;
 
 
     @PostMapping("/seller/login")
@@ -93,6 +96,13 @@ public class AuthController {
                 TradeInvite invite = inviteOpt.get();
                 invite.setUsed(true);
                 inviteRepository.save(invite);
+
+                TradeRecord trade = invite.getTradeRecord();
+                if (trade != null) {
+                    trade.setBuyer(profile);
+                    trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
+                    tradeRepository.save(trade);
+                }
             }
         }
 

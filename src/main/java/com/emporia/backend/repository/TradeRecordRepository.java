@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface TradeRecordRepository extends JpaRepository<TradeRecord, Long> {
     List<TradeRecord> findBySeller(SMEProfile seller);
+    List<TradeRecord> findByBuyer(SMEProfile buyer);
 }
