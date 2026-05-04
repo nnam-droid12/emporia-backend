@@ -137,6 +137,46 @@ public class TradeController {
         return ResponseEntity.ok(Map.of("totalTrades", allTrades.size(), "dashboardRecords", mappedTrades));
     }
 
+
+    @PostMapping("/{tradeId}/driver-invite")
+    public ResponseEntity<?> generateDriverInvite(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String sellerPhoneNumber = jwtService.extractPhoneNumber(token);
+
+        Optional<SMEProfile> sellerOpt = profileRepository.findByPhoneNumber(sellerPhoneNumber);
+        if (sellerOpt.isEmpty() || sellerOpt.get().getRole() != SMEProfile.Role.SELLER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only verified Sellers can generate driver links."));
+        }
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty() || !tradeOpt.get().getSeller().getId().equals(sellerOpt.get().getId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found or does not belong to you."));
+        }
+
+        TradeRecord trade = tradeOpt.get();
+
+        String uniqueCode = "DRV-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+        TradeInvite newInvite = TradeInvite.builder()
+                .inviteCode(uniqueCode)
+                .seller(sellerOpt.get())
+                .tradeRecord(trade)
+                .isUsed(false)
+                .build();
+        inviteRepository.save(newInvite);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Driver invite generated successfully",
+                "tradeId", trade.getTradeId(),
+                "driverCode", uniqueCode,
+                "deepLinkUrl", "https://emporia-app.com/driver-onboard?code=" + uniqueCode
+        ));
+    }
+
+
     private double[] simulateGeocoding(String address) {
         if (address != null && address.toLowerCase().contains("lagos")) return new double[]{6.5244, 3.3792};
         else if (address != null && address.toLowerCase().contains("tokyo")) return new double[]{35.6762, 139.6503};

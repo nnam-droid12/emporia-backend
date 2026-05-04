@@ -138,11 +138,30 @@ public class AuthController {
                         .kycVerified(false)
                         .build()));
 
+
+        if (request.getLinkCode() != null) {
+            Optional<TradeInvite> inviteOpt = inviteRepository.findByInviteCodeAndIsUsedFalse(request.getLinkCode());
+            if (inviteOpt.isPresent() && inviteOpt.get().getExpiresAt().isAfter(java.time.LocalDateTime.now())) {
+                TradeInvite invite = inviteOpt.get();
+                invite.setUsed(true);
+                inviteRepository.save(invite);
+
+                TradeRecord trade = invite.getTradeRecord();
+                if (trade != null) {
+                    trade.setDriver(profile);
+                    trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_ASSIGNED); // Update Escrow/Logistics status!
+                    tradeRepository.save(trade);
+                }
+            }
+        }
+
         Map<String, Object> extraClaims = Map.of("role", profile.getRole().name(), "businessName", profile.getBusinessName());
+        String simulatedDriverAddress = "Logistics Hub, Terminal B, Sandbox City";
 
         return ResponseEntity.ok(Map.of(
                 "token", jwtService.generateToken(extraClaims, profile.getPhoneNumber()),
                 "message", "Driver Authenticated Safely",
+                "kycAddress", simulatedDriverAddress,
                 "role", profile.getRole().name()
         ));
     }
