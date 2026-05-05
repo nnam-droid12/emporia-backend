@@ -39,13 +39,11 @@ public class TradeRecord {
     // Trade Details
     private String goodsType;
     private Integer quantity;
+    private Double amount;
     private LocalDate deliveryDate;
     private LocalTime deliveryTime;
 
-    // Seller's Payout Account
-    private String accountNumber;
-    private String accountName;
-    private String bankName;
+    private String deliveryCode;
 
     // Map Coordinates
     private String deliveryAddress;
@@ -68,12 +66,17 @@ public class TradeRecord {
     @Enumerated(EnumType.STRING)
     private TradeStatus tradeStatus;
 
+    // Dispute Tracking
+    private String flagReason;
+
     public enum TradeStatus {
         CREATED,
         BUYER_JOINED,
         DRIVER_ASSIGNED,
+        ACTIVE,
         IN_TRANSIT,
-        DELIVERED
+        DELIVERED,
+        FLAGGED
     }
 
     @PrePersist

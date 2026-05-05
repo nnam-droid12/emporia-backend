@@ -27,6 +27,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/trade/**",
+                                "/api/v1/bank-account/**",
                                 "/error"
                         ).permitAll()
 

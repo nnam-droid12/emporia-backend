@@ -100,7 +100,11 @@ public class AuthController {
                 TradeRecord trade = invite.getTradeRecord();
                 if (trade != null) {
                     trade.setBuyer(profile);
-                    trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
+                    if (trade.getDriver() != null) {
+                        trade.setTradeStatus(TradeRecord.TradeStatus.ACTIVE);
+                    } else {
+                        trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
+                    }
                     tradeRepository.save(trade);
                 }
             }
@@ -149,7 +153,11 @@ public class AuthController {
                 TradeRecord trade = invite.getTradeRecord();
                 if (trade != null) {
                     trade.setDriver(profile);
-                    trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_ASSIGNED); // Update Escrow/Logistics status!
+                    if (trade.getBuyer() != null) {
+                        trade.setTradeStatus(TradeRecord.TradeStatus.ACTIVE);
+                    } else {
+                        trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_ASSIGNED);
+                    }
                     tradeRepository.save(trade);
                 }
             }
