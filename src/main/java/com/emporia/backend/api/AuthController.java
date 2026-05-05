@@ -91,9 +91,11 @@ public class AuthController {
                         .kycVerified(true)
                         .build()));
 
-        if (request.getInviteCode() != null) {
+
+        if (request.getInviteCode() != null && !request.getInviteCode().isEmpty()) {
             Optional<TradeInvite> inviteOpt = inviteRepository.findByInviteCodeAndIsUsedFalse(request.getInviteCode());
-            if (inviteOpt.isPresent() && inviteOpt.get().getExpiresAt().isAfter(java.time.LocalDateTime.now())) {
+
+            if (inviteOpt.isPresent()) {
                 TradeInvite invite = inviteOpt.get();
                 invite.setUsed(true);
                 inviteRepository.save(invite);
@@ -108,6 +110,9 @@ public class AuthController {
                     }
                     tradeRepository.save(trade);
                 }
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Invalid or expired invite code. Please request a valid link from the Seller."));
             }
         }
 
@@ -143,7 +148,8 @@ public class AuthController {
                         .kycVerified(false)
                         .build()));
 
-        if (request.getLinkCode() != null) {
+
+        if (request.getLinkCode() != null && !request.getLinkCode().isEmpty()) {
             Optional<TradeInvite> inviteOpt = inviteRepository.findByInviteCodeAndIsUsedFalse(request.getLinkCode());
 
             if (inviteOpt.isPresent()) {
@@ -161,6 +167,9 @@ public class AuthController {
                     }
                     tradeRepository.save(trade);
                 }
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Invalid or expired invite code. Please request a new link from the Seller."));
             }
         }
 
