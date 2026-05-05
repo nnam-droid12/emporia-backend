@@ -30,6 +30,7 @@ public class AuthController {
     private final TradeRecordRepository tradeRepository;
 
 
+
     @PostMapping("/seller/login")
     public ResponseEntity<?> sellerLogin(@RequestBody SellerLoginRequest request) {
 
@@ -142,10 +143,10 @@ public class AuthController {
                         .kycVerified(false)
                         .build()));
 
-
         if (request.getLinkCode() != null) {
             Optional<TradeInvite> inviteOpt = inviteRepository.findByInviteCodeAndIsUsedFalse(request.getLinkCode());
-            if (inviteOpt.isPresent() && inviteOpt.get().getExpiresAt().isAfter(java.time.LocalDateTime.now())) {
+
+            if (inviteOpt.isPresent()) {
                 TradeInvite invite = inviteOpt.get();
                 invite.setUsed(true);
                 inviteRepository.save(invite);
