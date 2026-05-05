@@ -479,6 +479,48 @@ public class TradeController {
         ));
     }
 
+    @GetMapping("/{tradeId}")
+    public ResponseEntity<?> getTradeById(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String sellerPhoneNumber = jwtService.extractPhoneNumber(token);
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found"));
+        }
+
+        TradeRecord trade = tradeOpt.get();
+
+        if (!trade.getSeller().getPhoneNumber().equals(sellerPhoneNumber)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "You do not have permission to view this trade."));
+        }
+
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("tradeId", trade.getTradeId());
+        response.put("goodsType", trade.getGoodsType());
+        response.put("quantity", trade.getQuantity());
+        response.put("amount", trade.getAmount());
+        response.put("deliveryDate", trade.getDeliveryDate());
+        response.put("deliveryTime", trade.getDeliveryTime());
+        response.put("tradeStatus", trade.getTradeStatus().name());
+        response.put("paymentStatus", trade.getPaymentStatus().name());
+        response.put("deliveryAddress", trade.getDeliveryAddress());
+        response.put("latitude", trade.getLatitude());
+        response.put("longitude", trade.getLongitude());
+
+        response.put("flagReason", trade.getTradeStatus() == TradeRecord.TradeStatus.FLAGGED ? trade.getFlagReason() : null);
+
+        response.put("buyerName", trade.getBuyer() != null ? trade.getBuyer().getBusinessName() : "Awaiting Buyer");
+        response.put("buyerPhone", trade.getBuyer() != null ? trade.getBuyer().getPhoneNumber() : null);
+        response.put("driverName", trade.getDriver() != null ? trade.getDriver().getBusinessName() : "Unassigned");
+        response.put("driverPhone", trade.getDriver() != null ? trade.getDriver().getPhoneNumber() : null);
+
+        return ResponseEntity.ok(response);
+    }
 
 
     private double[] simulateGeocoding(String address) {
