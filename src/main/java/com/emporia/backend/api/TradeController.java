@@ -441,6 +441,45 @@ public class TradeController {
     }
 
 
+    @PostMapping("/{tradeId}/buyer-invite")
+    public ResponseEntity<?> generateBuyerInvite(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String sellerPhoneNumber = jwtService.extractPhoneNumber(token);
+
+        Optional<SMEProfile> sellerOpt = profileRepository.findByPhoneNumber(sellerPhoneNumber);
+        if (sellerOpt.isEmpty() || sellerOpt.get().getRole() != SMEProfile.Role.SELLER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only verified Sellers can generate buyer links."));
+        }
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty() || !tradeOpt.get().getSeller().getId().equals(sellerOpt.get().getId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found or does not belong to you."));
+        }
+
+        TradeRecord trade = tradeOpt.get();
+
+        String uniqueCode = "EMP-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+        TradeInvite newInvite = TradeInvite.builder()
+                .inviteCode(uniqueCode)
+                .seller(sellerOpt.get())
+                .tradeRecord(trade)
+                .isUsed(false)
+                .build();
+        inviteRepository.save(newInvite);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "New Buyer invite generated successfully",
+                "tradeId", trade.getTradeId(),
+                "inviteCode", uniqueCode,
+                "deepLinkUrl", "https://emporia-frontend.vercel.app/buyer/onboarding?invite=" + uniqueCode
+        ));
+    }
+
+
 
     private double[] simulateGeocoding(String address) {
         if (address != null && address.toLowerCase().contains("lagos")) return new double[]{6.5244, 3.3792};
