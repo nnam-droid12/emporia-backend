@@ -158,8 +158,18 @@ public class TradeController {
             map.put("tradeId", trade.getTradeId());
             map.put("goods", trade.getGoodsType() + " (x" + trade.getQuantity() + ")");
             map.put("amount", trade.getAmount());
-            map.put("paymentStatus", trade.getPaymentStatus().name());
+            map.put("deliveryDate", trade.getDeliveryDate());
+            map.put("deliveryTime", trade.getDeliveryTime());
             map.put("tradeStatus", trade.getTradeStatus().name());
+
+            // NEW: Payment tracking for the dashboard
+            map.put("totalAmount", trade.getAmount());
+            map.put("amountReleased", trade.getAmountReleased() != null ? trade.getAmountReleased() : 0.0);
+            map.put("paymentStatus", trade.getPaymentStatus().name());
+
+
+            double remaining = trade.getAmount() - (trade.getAmountReleased() != null ? trade.getAmountReleased() : 0.0);
+            map.put("amountRemaining", Math.max(0.0, remaining));
             map.put("deliveryAddress", trade.getDeliveryAddress());
             map.put("latitude", trade.getLatitude());
             map.put("longitude", trade.getLongitude());
@@ -188,10 +198,15 @@ public class TradeController {
             map.put("tradeId", trade.getTradeId());
             map.put("goods", trade.getGoodsType() + " (x" + trade.getQuantity() + ")");
             map.put("amount", trade.getAmount());
-            map.put("paymentStatus", trade.getPaymentStatus().name());
+            map.put("deliveryDate", trade.getDeliveryDate());
+            map.put("deliveryTime", trade.getDeliveryTime());
             map.put("tradeStatus", trade.getTradeStatus().name());
             map.put("deliveryAddress", trade.getDeliveryAddress());
             map.put("deliveryCode", trade.getDeliveryCode());
+
+            map.put("totalAmount", trade.getAmount());
+            map.put("amountReleased", trade.getAmountReleased() != null ? trade.getAmountReleased() : 0.0);
+            map.put("paymentStatus", trade.getPaymentStatus().name());
 
             map.put("sellerName", trade.getSeller().getBusinessName());
             map.put("sellerPhone", trade.getSeller().getPhoneNumber());
@@ -216,6 +231,8 @@ public class TradeController {
             map.put("tradeId", trade.getTradeId());
             map.put("goods", trade.getGoodsType() + " (x" + trade.getQuantity() + ")");
             map.put("tradeStatus", trade.getTradeStatus().name());
+            map.put("deliveryDate", trade.getDeliveryDate());
+            map.put("deliveryTime", trade.getDeliveryTime());
             map.put("deliveryAddress", trade.getDeliveryAddress());
             map.put("sellerName", trade.getSeller().getBusinessName());
             map.put("sellerPhone", trade.getSeller().getPhoneNumber());
@@ -306,7 +323,7 @@ public class TradeController {
 
 
         trade.setTradeStatus(TradeRecord.TradeStatus.DELIVERED);
-        trade.setPaymentStatus(TradeRecord.PaymentStatus.RELEASED);
+        trade.setPaymentStatus(TradeRecord.PaymentStatus. FULLY_RELEASED);
         tradeRepository.save(trade);
 
         return ResponseEntity.ok(Map.of("message", "Delivery confirmed securely! Funds released to Seller."));

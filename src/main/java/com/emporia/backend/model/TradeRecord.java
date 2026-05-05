@@ -40,9 +40,12 @@ public class TradeRecord {
     private String goodsType;
     private Integer quantity;
     private Double amount;
+
+    @Column(nullable = false, columnDefinition = "DOUBLE PRECISION DEFAULT 0.0")
+    private Double amountReleased = 0.0;
+
     private LocalDate deliveryDate;
     private LocalTime deliveryTime;
-
     private String deliveryCode;
 
     // Map Coordinates
@@ -50,16 +53,16 @@ public class TradeRecord {
     private Double latitude;
     private Double longitude;
 
-    // Escrow Payment Tracking
+
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus;
 
     public enum PaymentStatus {
-        PENDING,
-        ONE_THIRD_FUNDED,
-        HALF_FUNDED,
-        FULLY_FUNDED,
-        RELEASED
+        PENDING,          // Buyer hasn't paid yet
+        ESCROW_FUNDED,    // Buyer paid 100% to Paystack (Money is safe)
+        RELEASE_BATCH_1,  // 1/3 of total released to Seller
+        RELEASE_BATCH_2,  // 1/2 of total released to Seller
+        FULLY_RELEASED    // Remaining balance released to Seller
     }
 
     // Logistics Tracking

@@ -28,6 +28,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",
                                 "/api/v1/trade/**",
                                 "/api/v1/bank-account/**",
+                                "/api/v1/payment/**",
                                 "/error"
                         ).permitAll()
 

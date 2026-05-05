@@ -33,3 +33,8 @@ nokia:
 cloud:
   gcp:
     project-id: "nixora-project"
+
+
+paystack:
+  secret:
+    key: "pk_test_cbfa1b49b50a0e70cc82f6eb0f96f582e8b309ae"
