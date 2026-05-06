@@ -62,24 +62,83 @@ public class TradeController {
         TradeRecord savedTrade = tradeRepository.save(newTrade);
         savedTrade.setTradeId("trd_" + savedTrade.getId());
 
+        if (request.getBuyerPhoneNumber() != null && !request.getBuyerPhoneNumber().isEmpty()) {
+            Optional<SMEProfile> buyerOpt = profileRepository.findByPhoneNumber(request.getBuyerPhoneNumber());
+
+            if (buyerOpt.isPresent() && buyerOpt.get().getRole() == SMEProfile.Role.BUYER) {
+                savedTrade.setBuyer(buyerOpt.get());
+                savedTrade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
+                tradeRepository.save(savedTrade);
+
+                return ResponseEntity.ok(Map.of(
+                        "message", "Trade created and instantly assigned to existing Buyer.",
+                        "tradeId", savedTrade.getTradeId(),
+                        "buyerName", buyerOpt.get().getPersonalName() != null ? buyerOpt.get().getPersonalName() : "Unnamed Buyer",
+                        "paymentStatus", savedTrade.getPaymentStatus().name()
+                ));
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Buyer phone number not found in the system."));
+            }
+        }
+
+
+        tradeRepository.save(savedTrade);
+
         String uniqueCode = "EMP-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        TradeInvite newInvite = TradeInvite.builder()
+        TradeInvite invite = TradeInvite.builder()
                 .inviteCode(uniqueCode)
-                .seller(seller)
+                .seller(sellerOpt.get())
                 .tradeRecord(savedTrade)
                 .isUsed(false)
                 .build();
-        inviteRepository.save(newInvite);
+        inviteRepository.save(invite);
 
         return ResponseEntity.ok(Map.of(
-                "message", "Trade record created successfully. Awaiting Buyer Address.",
+                "message", "Trade record created successfully. Awaiting Buyer Onboarding.",
                 "tradeId", savedTrade.getTradeId(),
-                "paymentStatus", savedTrade.getPaymentStatus().name(),
                 "inviteCode", uniqueCode,
-                "deepLinkUrl", "https://emporia-frontend.vercel.app/buyer/onboarding?invite=" + uniqueCode
+                "deepLinkUrl", "https://emporia-frontend.vercel.app/buyer/onboarding?invite=" + uniqueCode,
+                "paymentStatus", savedTrade.getPaymentStatus().name()
         ));
     }
 
+
+
+    @GetMapping("/seller/network")
+    public ResponseEntity<?> getSellerNetwork(@RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        String sellerPhoneNumber = jwtService.extractPhoneNumber(token);
+
+        Optional<SMEProfile> sellerOpt = profileRepository.findByPhoneNumber(sellerPhoneNumber);
+        if (sellerOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        List<TradeRecord> trades = tradeRepository.findBySeller(sellerOpt.get());
+
+        List<Map<String, String>> previousBuyers = trades.stream()
+                .filter(t -> t.getBuyer() != null)
+                .map(t -> Map.of(
+                        "name", t.getBuyer().getPersonalName() != null ? t.getBuyer().getPersonalName() : "Unnamed Buyer",
+                        "phoneNumber", t.getBuyer().getPhoneNumber()
+                ))
+                .distinct()
+                .toList();
+
+
+        List<Map<String, String>> previousDrivers = trades.stream()
+                .filter(t -> t.getDriver() != null)
+                .map(t -> Map.of(
+                        "name", t.getDriver().getBusinessName() != null ? t.getDriver().getBusinessName() : "Unnamed Driver",
+                        "phoneNumber", t.getDriver().getPhoneNumber()
+                ))
+                .distinct()
+                .toList();
+
+        return ResponseEntity.ok(Map.of(
+                "buyers", previousBuyers,
+                "drivers", previousDrivers
+        ));
+    }
 
     @PutMapping("/{tradeId}/address")
     public ResponseEntity<?> updateDeliveryAddress(
@@ -281,6 +340,74 @@ public class TradeController {
                 "deepLinkUrl", "https://emporia-app.com/driver-onboard?code=" + uniqueCode
         ));
     }
+
+
+    @PostMapping("/{tradeId}/assign-driver")
+    public ResponseEntity<?> assignExistingDriver(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId,
+            @RequestBody Map<String, String> payload) {
+
+        String token = authHeader.substring(7);
+        String sellerPhone = jwtService.extractPhoneNumber(token);
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty() || !tradeOpt.get().getSeller().getPhoneNumber().equals(sellerPhone)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found or unauthorized."));
+        }
+
+        String driverPhone = payload.get("driverPhoneNumber");
+        Optional<SMEProfile> driverOpt = profileRepository.findByPhoneNumber(driverPhone);
+        if (driverOpt.isEmpty() || driverOpt.get().getRole() != SMEProfile.Role.DRIVER) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Verified Driver not found."));
+        }
+
+        TradeRecord trade = tradeOpt.get();
+        trade.setDriver(driverOpt.get());
+        trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_PENDING);
+        tradeRepository.save(trade);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Assignment sent to driver. Waiting for their acceptance.",
+                "tradeStatus", trade.getTradeStatus().name()
+        ));
+    }
+
+
+    @PostMapping("/{tradeId}/driver-accept")
+    public ResponseEntity<?> driverAcceptTrade(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String driverPhone = jwtService.extractPhoneNumber(token);
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found."));
+
+        TradeRecord trade = tradeOpt.get();
+
+        if (trade.getDriver() == null || !trade.getDriver().getPhoneNumber().equals(driverPhone)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "You are not assigned to this trade."));
+        }
+
+        if (trade.getTradeStatus() != TradeRecord.TradeStatus.DRIVER_PENDING) {
+            return ResponseEntity.badRequest().body(Map.of("error", "This trade is not pending your acceptance."));
+        }
+
+        if (trade.getBuyer() != null) {
+            trade.setTradeStatus(TradeRecord.TradeStatus.ACTIVE);
+        } else {
+            trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_ASSIGNED);
+        }
+        tradeRepository.save(trade);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "You have successfully accepted the trade assignment.",
+                "tradeStatus", trade.getTradeStatus().name()
+        ));
+    }
+
 
     @GetMapping("/track/{tradeId}")
     public ResponseEntity<?> trackTrade(@PathVariable String tradeId) {
@@ -564,6 +691,9 @@ public class TradeController {
         private String accountNumber;
         private String accountName;
         private String bankName;
+
+
+        private String buyerPhoneNumber;
 
     }
 

@@ -23,7 +23,7 @@ public class SMEProfile {
     @Column(nullable = false)
     private String businessName;
 
-
+    private String personalName;
 
     @Column(nullable = false)
     private boolean kycVerified;

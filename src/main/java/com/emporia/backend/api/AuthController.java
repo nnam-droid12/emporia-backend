@@ -86,11 +86,10 @@ public class AuthController {
         SMEProfile profile = profileRepository.findByPhoneNumber(request.getPhoneNumber())
                 .orElseGet(() -> profileRepository.save(SMEProfile.builder()
                         .phoneNumber(request.getPhoneNumber())
-                        .businessName("Verified Buyer - " + request.getPhoneNumber())
+                        .personalName(request.getPersonalName())
                         .role(SMEProfile.Role.BUYER)
                         .kycVerified(true)
                         .build()));
-
 
         if (request.getInviteCode() != null && !request.getInviteCode().isEmpty()) {
             Optional<TradeInvite> inviteOpt = inviteRepository.findByInviteCodeAndIsUsedFalse(request.getInviteCode());
@@ -103,7 +102,7 @@ public class AuthController {
                 TradeRecord trade = invite.getTradeRecord();
                 if (trade != null) {
                     trade.setBuyer(profile);
-                    if (trade.getDriver() != null) {
+                    if (trade.getDriver() != null && trade.getTradeStatus() != TradeRecord.TradeStatus.DRIVER_PENDING) {
                         trade.setTradeStatus(TradeRecord.TradeStatus.ACTIVE);
                     } else {
                         trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
@@ -111,19 +110,22 @@ public class AuthController {
                     tradeRepository.save(trade);
                 }
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("error", "Invalid or expired invite code. Please request a valid link from the Seller."));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Invalid or expired invite code."));
             }
         }
 
-        Map<String, Object> extraClaims = Map.of("role", profile.getRole().name(), "businessName", profile.getBusinessName());
+        Map<String, Object> extraClaims = Map.of(
+                "role", profile.getRole().name(),
+                "name", profile.getPersonalName() != null ? profile.getPersonalName() : "Buyer"
+        );
 
         return ResponseEntity.ok(Map.of(
                 "token", jwtService.generateToken(extraClaims, profile.getPhoneNumber()),
-                "message", "Buyer Phone Authenticated",
+                "message", "Buyer Login Successful",
                 "role", profile.getRole().name()
         ));
     }
+
 
     @PostMapping("/driver/login")
     public ResponseEntity<?> driverLogin(@RequestBody DriverLoginRequest request) {
@@ -195,6 +197,7 @@ public class AuthController {
     public static class BuyerLoginRequest {
         private String phoneNumber;
         private String inviteCode;
+        private String personalName;
     }
 
     @Data

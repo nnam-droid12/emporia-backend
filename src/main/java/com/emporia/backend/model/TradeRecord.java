@@ -75,6 +75,7 @@ public class TradeRecord {
     public enum TradeStatus {
         CREATED,
         BUYER_JOINED,
+        DRIVER_PENDING,
         DRIVER_ASSIGNED,
         ACTIVE,
         IN_TRANSIT,
