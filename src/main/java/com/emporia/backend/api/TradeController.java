@@ -250,7 +250,17 @@ public class TradeController {
             map.put("longitude", trade.getLongitude());
             map.put("flagReason", trade.getTradeStatus() == TradeRecord.TradeStatus.FLAGGED ? trade.getFlagReason() : null);
 
-            map.put("buyerName", trade.getBuyer() != null ? trade.getBuyer().getBusinessName() : "Awaiting Buyer");
+            String displayBuyerName = "awaiting buyer";
+            if (trade.getBuyer() != null) {
+                if (trade.getBuyer().getPersonalName() != null && !trade.getBuyer().getPersonalName().isEmpty()) {
+                    displayBuyerName = trade.getBuyer().getPersonalName();
+                } else if (trade.getBuyer().getBusinessName() != null && !trade.getBuyer().getBusinessName().isEmpty()) {
+                    displayBuyerName = trade.getBuyer().getBusinessName();
+                } else {
+                    displayBuyerName = "Unnamed Buyer";
+                }
+            }
+            map.put("buyerName", displayBuyerName);
             map.put("buyerPhone", trade.getBuyer() != null ? trade.getBuyer().getPhoneNumber() : null);
             map.put("driverName", trade.getDriver() != null ? trade.getDriver().getBusinessName() : "Unassigned");
             return map;
@@ -311,7 +321,17 @@ public class TradeController {
             map.put("deliveryAddress", trade.getDeliveryAddress());
             map.put("sellerName", trade.getSeller().getBusinessName());
             map.put("sellerPhone", trade.getSeller().getPhoneNumber());
-            map.put("buyerName", trade.getBuyer() != null ? trade.getBuyer().getBusinessName() : "Awaiting Buyer");
+            String displayBuyerName = "awaiting buyer";
+            if (trade.getBuyer() != null) {
+                if (trade.getBuyer().getPersonalName() != null && !trade.getBuyer().getPersonalName().isEmpty()) {
+                    displayBuyerName = trade.getBuyer().getPersonalName();
+                } else if (trade.getBuyer().getBusinessName() != null && !trade.getBuyer().getBusinessName().isEmpty()) {
+                    displayBuyerName = trade.getBuyer().getBusinessName();
+                } else {
+                    displayBuyerName = "Unnamed Buyer";
+                }
+            }
+            map.put("buyerName", displayBuyerName);
             map.put("buyerPhone", trade.getBuyer() != null ? trade.getBuyer().getPhoneNumber() : null);
             return map;
         }).collect(Collectors.toList());
