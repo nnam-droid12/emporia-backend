@@ -65,7 +65,8 @@ public class BankAccountController {
                 return ResponseEntity.ok(bankOpt.get());
             }
         }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Bank account not found."));
+
+        return ResponseEntity.ok(java.util.Collections.emptyList());
     }
 
     @Data

@@ -87,6 +87,8 @@ public class AuthController {
                 .orElseGet(() -> profileRepository.save(SMEProfile.builder()
                         .phoneNumber(request.getPhoneNumber())
                         .personalName(request.getPersonalName())
+                        .businessName(request.getPersonalName() != null ? request.getPersonalName() : "Individual Buyer")
+
                         .role(SMEProfile.Role.BUYER)
                         .kycVerified(true)
                         .build()));
