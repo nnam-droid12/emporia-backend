@@ -64,21 +64,37 @@ public class TradeController {
 
         if (request.getBuyerPhoneNumber() != null && !request.getBuyerPhoneNumber().isEmpty()) {
             Optional<SMEProfile> buyerOpt = profileRepository.findByPhoneNumber(request.getBuyerPhoneNumber());
+            SMEProfile buyerProfile;
 
-            if (buyerOpt.isPresent() && buyerOpt.get().getRole() == SMEProfile.Role.BUYER) {
-                savedTrade.setBuyer(buyerOpt.get());
-                savedTrade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
-                tradeRepository.save(savedTrade);
-
-                return ResponseEntity.ok(Map.of(
-                        "message", "Trade created and instantly assigned to existing Buyer.",
-                        "tradeId", savedTrade.getTradeId(),
-                        "buyerName", buyerOpt.get().getPersonalName() != null ? buyerOpt.get().getPersonalName() : "Unnamed Buyer",
-                        "paymentStatus", savedTrade.getPaymentStatus().name()
-                ));
+            if (buyerOpt.isPresent()) {
+                if (buyerOpt.get().getRole() != SMEProfile.Role.BUYER) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Phone number is registered to a non-buyer account."));
+                }
+                buyerProfile = buyerOpt.get();
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Buyer phone number not found in the system."));
+                if (request.getPersonalName() == null || request.getPersonalName().trim().isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "To add a new buyer directly, please provide their personalName."));
+                }
+
+                buyerProfile = profileRepository.save(SMEProfile.builder()
+                        .phoneNumber(request.getBuyerPhoneNumber())
+                        .personalName(request.getPersonalName())
+                        .businessName(request.getPersonalName())
+                        .role(SMEProfile.Role.BUYER)
+                        .kycVerified(true)
+                        .build());
             }
+
+            savedTrade.setBuyer(buyerProfile);
+            savedTrade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
+            tradeRepository.save(savedTrade);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", buyerOpt.isPresent() ? "Trade instantly assigned to existing Buyer." : "New Buyer pre-registered and trade assigned.",
+                    "tradeId", savedTrade.getTradeId(),
+                    "buyerName", buyerProfile.getPersonalName() != null ? buyerProfile.getPersonalName() : "Unnamed Buyer",
+                    "paymentStatus", savedTrade.getPaymentStatus().name()
+            ));
         }
 
 
@@ -691,6 +707,7 @@ public class TradeController {
         private String accountNumber;
         private String accountName;
         private String bankName;
+        private String personalName;
 
 
         private String buyerPhoneNumber;
