@@ -122,6 +122,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of(
                 "token", jwtService.generateToken(extraClaims, profile.getPhoneNumber()),
                 "message", "Buyer Login Successful",
+                "personalName", profile.getPersonalName(),
                 "role", profile.getRole().name()
         ));
     }
