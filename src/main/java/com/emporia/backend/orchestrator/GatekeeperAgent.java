@@ -56,7 +56,7 @@ public class GatekeeperAgent {
         this.runner = new InMemoryRunner(this.agent, "emporia_auth_app");
     }
 
-    // Change return type to String
+
     public String evaluateIdentity(String phoneNumber, String businessName) {
         String prompt = String.format("A new user is trying to register. Phone: %s, Name: %s. Please run a KYC Match.", phoneNumber, businessName);
 
@@ -75,7 +75,7 @@ public class GatekeeperAgent {
             }
         });
 
-        // Return the raw text instead of a boolean
+
         return finalDecision.get();
     }
 

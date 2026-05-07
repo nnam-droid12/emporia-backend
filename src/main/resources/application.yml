@@ -37,4 +37,4 @@ cloud:
 
 paystack:
   secret:
-    key: "pk_test_cbfa1b49b50a0e70cc82f6eb0f96f582e8b309ae"
+    key: "sk_test_005d78676beafe8d77173e277b4f74c4a84f7895"

@@ -3,6 +3,7 @@ package com.emporia.backend.api;
 import com.emporia.backend.model.BankAccount;
 import com.emporia.backend.model.SMEProfile;
 import com.emporia.backend.model.TradeRecord;
+import com.emporia.backend.orchestrator.MasterAgent;
 import com.emporia.backend.repository.BankAccountRepository;
 import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.repository.TradeRecordRepository;
@@ -27,6 +28,7 @@ public class PaymentController {
     private final SMEProfileRepository profileRepository;
     private final JwtService jwtService;
     private final BankAccountRepository bankAccountRepository;
+    private final MasterAgent masterAgent;
 
     @Value("${paystack.secret.key:sk_test_YOUR_PAYSTACK_SECRET_KEY}")
     private String paystackSecretKey;
@@ -82,7 +84,14 @@ public class PaymentController {
                     "authorization_url", responseData.get("authorization_url"),
                     "reference", reference
             ));
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            System.err.println("Paystack Error Response: " + e.getResponseBodyAsString());
+            return ResponseEntity.status(e.getStatusCode()).body(Map.of(
+                    "error", "Paystack rejected the request.",
+                    "details", e.getResponseBodyAsString()
+            ));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to initialize payment with Paystack."));
         }
     }
@@ -180,6 +189,11 @@ public class PaymentController {
             String recipientCode = createPaystackRecipient(sellerBank);
 
             if (recipientCode != null) {
+
+                if (!masterAgent.executeFraudPreventionProtocol(trade.getSeller().getPhoneNumber())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "SECURITY ALERT: Recent SIM Swap detected. Escrow release frozen."));
+                }
+
                 initiatePaystackTransfer(recipientCode, amountToTransfer, trade.getTradeId());
             }
         } catch (Exception e) {
