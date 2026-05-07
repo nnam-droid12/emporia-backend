@@ -511,8 +511,8 @@ public class TradeController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only the original Seller can edit this trade."));
         }
 
-        if (trade.getTradeStatus() == TradeRecord.TradeStatus.DELIVERED || trade.getTradeStatus() == TradeRecord.TradeStatus.FLAGGED) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Cannot edit a trade that is already Delivered or Flagged."));
+        if (trade.getTradeStatus() == TradeRecord.TradeStatus.DELIVERED) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Cannot edit a trade that is already Delivered."));
         }
 
         if (request.getGoodsType() != null) trade.setGoodsType(request.getGoodsType());
