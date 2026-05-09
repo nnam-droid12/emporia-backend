@@ -1,4 +1,13 @@
 steps:
+  # Step 0 — Fetch the Firebase JSON from Secret Manager
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        mkdir -p src/main/resources
+        gcloud secrets versions access latest --secret="firebase_service_account" > src/main/resources/firebase-service-account.json
+
   # Step 1 — Build Docker image tagged with commit SHA and latest
   - name: 'gcr.io/cloud-builders/docker'
     args:

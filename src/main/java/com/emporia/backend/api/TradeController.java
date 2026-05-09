@@ -7,6 +7,7 @@ import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.repository.TradeInviteRepository;
 import com.emporia.backend.repository.TradeRecordRepository;
 import com.emporia.backend.security.JwtService;
+import com.emporia.backend.service.NotificationService;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class TradeController {
     private final TradeInviteRepository inviteRepository;
     private final TradeRecordRepository tradeRepository;
     private final JwtService jwtService;
+    private final NotificationService notificationService;
 
 
     @PostMapping("/create")
@@ -88,6 +90,14 @@ public class TradeController {
             savedTrade.setBuyer(buyerProfile);
             savedTrade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
             tradeRepository.save(savedTrade);
+
+            if (seller.getFcmToken() != null) {
+                String buyerName = buyerProfile.getPersonalName() != null ? buyerProfile.getPersonalName() : "A buyer";
+                String title = "Emporia Trade Update";
+                String body = String.format("%s has successfully joined the trade for %s purchase.", buyerName, savedTrade.getGoodsType());
+
+                notificationService.sendPushNotification(seller.getFcmToken(), title, body);
+            }
 
             return ResponseEntity.ok(Map.of(
                     "message", buyerOpt.isPresent() ? "Trade instantly assigned to existing Buyer." : "New Buyer pre-registered and trade assigned.",
@@ -237,7 +247,7 @@ public class TradeController {
             map.put("deliveryTime", trade.getDeliveryTime());
             map.put("tradeStatus", trade.getTradeStatus().name());
 
-            // NEW: Payment tracking for the dashboard
+
             map.put("totalAmount", trade.getAmount());
             map.put("amountReleased", trade.getAmountReleased() != null ? trade.getAmountReleased() : 0.0);
             map.put("paymentStatus", trade.getPaymentStatus().name());
@@ -582,6 +592,13 @@ public class TradeController {
         trade.setFlagReason(reason);
 
         tradeRepository.save(trade);
+
+        if (trade.getSeller().getFcmToken() != null) {
+            String title = "Trade Flagged";
+            String body = String.format("Trade %s has been flagged for dispute by the buyer. Please review immediately.", trade.getTradeId());
+
+            notificationService.sendPushNotification(trade.getSeller().getFcmToken(), title, body);
+        }
 
         return ResponseEntity.ok(Map.of("message", "Trade has been flagged for dispute. Seller has been notified."));
     }

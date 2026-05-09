@@ -36,6 +36,8 @@ public class SMEProfile {
 
     private LocalDateTime updatedAt;
 
+    private String fcmToken;
+
     // Automatically set timestamps
     @PrePersist
     protected void onCreate() {

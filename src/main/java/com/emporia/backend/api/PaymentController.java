@@ -8,6 +8,7 @@ import com.emporia.backend.repository.BankAccountRepository;
 import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.repository.TradeRecordRepository;
 import com.emporia.backend.security.JwtService;
+import com.emporia.backend.service.NotificationService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,7 @@ public class PaymentController {
     private final JwtService jwtService;
     private final BankAccountRepository bankAccountRepository;
     private final MasterAgent masterAgent;
+    private final NotificationService notificationService;
 
     @Value("${paystack.secret.key:sk_test_YOUR_PAYSTACK_SECRET_KEY}")
     private String paystackSecretKey;
@@ -109,17 +111,33 @@ public class PaymentController {
 
         try {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-            Map<String, Object> body = response.getBody();
-            Map<String, Object> data = (Map<String, Object>) body.get("data");
+
+            Map<String, Object> responseBody = response.getBody();
+            Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
 
             String status = (String) data.get("status");
 
             if ("success".equals(status)) {
-                // Payment was successful, update the database!
                 Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
                 if (tradeOpt.isPresent()) {
                     TradeRecord trade = tradeOpt.get();
                     trade.setPaymentStatus(TradeRecord.PaymentStatus.ESCROW_FUNDED);
+
+                    if (trade.getSeller().getFcmToken() != null) {
+                        String title = "Escrow Funded";
+                        String notificationBody = String.format(
+                                "The amount for %s has been securely paid into Emporia Escrow for trade ID %s.",
+                                trade.getGoodsType(),
+                                trade.getTradeId()
+                        );
+
+                        notificationService.sendPushNotification(
+                                trade.getSeller().getFcmToken(),
+                                title,
+                                notificationBody
+                        );
+                    }
+
                     tradeRepository.save(trade);
 
                     return ResponseEntity.ok(Map.of(
@@ -131,7 +149,8 @@ public class PaymentController {
             return ResponseEntity.badRequest().body(Map.of("error", "Payment verification failed or is still pending."));
 
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to verify payment with Paystack."));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to verify payment with Paystack."));
         }
     }
 
