@@ -373,7 +373,7 @@ public class TradeController {
                 "message", "Driver invite generated successfully",
                 "tradeId", trade.getTradeId(),
                 "driverCode", uniqueCode,
-                "deepLinkUrl", "https://emporia-app.com/driver-onboard?code=" + uniqueCode
+                "deepLinkUrl", " https://emporia-frontend.vercel.app/driver/onboarding?code=" + uniqueCode
         ));
     }
 
