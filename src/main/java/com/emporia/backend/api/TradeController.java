@@ -451,6 +451,53 @@ public class TradeController {
     }
 
 
+    @PostMapping("/{tradeId}/driver-reject")
+    public ResponseEntity<?> driverRejectTrade(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String driverPhone = jwtService.extractPhoneNumber(token);
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found."));
+
+        TradeRecord trade = tradeOpt.get();
+
+        if (trade.getDriver() == null || !trade.getDriver().getPhoneNumber().equals(driverPhone)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "You are not assigned to this trade."));
+        }
+
+        if (trade.getTradeStatus() != TradeRecord.TradeStatus.DRIVER_PENDING) {
+            return ResponseEntity.badRequest().body(Map.of("error", "This trade is not pending your acceptance."));
+        }
+
+        trade.setDriver(null);
+
+        if (trade.getBuyer() != null) {
+            trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
+        } else {
+            trade.setTradeStatus(TradeRecord.TradeStatus.PENDING);
+        }
+
+        if (trade.getSeller().getFcmToken() != null) {
+            String title = "Driver Rejected Assignment";
+            String notificationBody = String.format(
+                    "The driver assigned to trade %s has declined the delivery request. Please assign a new driver.",
+                    trade.getTradeId()
+            );
+            notificationService.sendPushNotification(trade.getSeller().getFcmToken(), title, notificationBody);
+        }
+
+        tradeRepository.save(trade);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "You have successfully rejected the trade assignment.",
+                "tradeStatus", trade.getTradeStatus().name()
+        ));
+    }
+
+
     @GetMapping("/track/{tradeId}")
     public ResponseEntity<?> trackTrade(@PathVariable String tradeId) {
         Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
