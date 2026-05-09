@@ -14,7 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -28,8 +27,6 @@ public class AuthController {
     private final JwtService jwtService;
     private final NokiaCamaraTools nokiaCamaraTools;
     private final TradeRecordRepository tradeRepository;
-
-
 
     @PostMapping("/seller/login")
     public ResponseEntity<?> sellerLogin(@RequestBody SellerLoginRequest request) {
@@ -88,7 +85,6 @@ public class AuthController {
                         .phoneNumber(request.getPhoneNumber())
                         .personalName(request.getPersonalName())
                         .businessName(request.getPersonalName() != null ? request.getPersonalName() : "Individual Buyer")
-
                         .role(SMEProfile.Role.BUYER)
                         .kycVerified(true)
                         .build()));
@@ -104,11 +100,13 @@ public class AuthController {
                 TradeRecord trade = invite.getTradeRecord();
                 if (trade != null) {
                     trade.setBuyer(profile);
-                    if (trade.getDriver() != null && trade.getTradeStatus() != TradeRecord.TradeStatus.DRIVER_PENDING) {
-                        trade.setTradeStatus(TradeRecord.TradeStatus.ACTIVE);
+
+                    if (trade.getDriver() != null) {
+                        trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_PENDING);
                     } else {
                         trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
                     }
+
                     tradeRepository.save(trade);
                 }
             } else {
@@ -165,11 +163,9 @@ public class AuthController {
                 TradeRecord trade = invite.getTradeRecord();
                 if (trade != null) {
                     trade.setDriver(profile);
-                    if (trade.getBuyer() != null) {
-                        trade.setTradeStatus(TradeRecord.TradeStatus.ACTIVE);
-                    } else {
-                        trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_ASSIGNED);
-                    }
+
+                    trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_PENDING);
+
                     tradeRepository.save(trade);
                 }
             } else {
