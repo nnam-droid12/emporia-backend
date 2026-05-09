@@ -25,7 +25,7 @@ public class AuthController {
     private final SMEProfileRepository profileRepository;
     private final TradeInviteRepository inviteRepository;
     private final JwtService jwtService;
-    private final MasterAgent masterAgent;
+    private final MasterAgent masterAgent; // NEW: Multi-Agent Orchestrator
     private final TradeRecordRepository tradeRepository;
 
     @PostMapping("/seller/login")
