@@ -73,14 +73,12 @@ public class TradeRecord {
     private String flagReason;
 
     public enum TradeStatus {
-        CREATED,
-        BUYER_JOINED,
-        DRIVER_PENDING,
-        DRIVER_ASSIGNED,
-        ACTIVE,
-        IN_TRANSIT,
-        DELIVERED,
-        FLAGGED
+        PENDING,         // Initial state (Awaiting Buyer)
+        BUYER_JOINED,    // Buyer has successfully joined
+        DRIVER_PENDING,  // Driver is assigned but hasn't clicked "Accept" yet
+        IN_TRANSIT,      // Driver has accepted the assignment and the delivery is active
+        DELIVERED,       // Goods have arrived
+        FLAGGED          // Dispute opened
     }
 
     @PrePersist

@@ -431,15 +431,11 @@ public class TradeController {
             return ResponseEntity.badRequest().body(Map.of("error", "This trade is not pending your acceptance."));
         }
 
-        if (trade.getBuyer() != null) {
-            trade.setTradeStatus(TradeRecord.TradeStatus.ACTIVE);
-        } else {
-            trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_ASSIGNED);
-        }
+        trade.setTradeStatus(TradeRecord.TradeStatus.IN_TRANSIT);
         tradeRepository.save(trade);
 
         return ResponseEntity.ok(Map.of(
-                "message", "You have successfully accepted the trade assignment.",
+                "message", "You have successfully accepted the trade assignment. The goods are now In Transit.",
                 "tradeStatus", trade.getTradeStatus().name()
         ));
     }
@@ -544,18 +540,22 @@ public class TradeController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only the Seller can unassign a driver."));
         }
 
-        trade.setDriver(null);
+        if (trade.getTradeStatus() == TradeRecord.TradeStatus.IN_TRANSIT ||
+                trade.getTradeStatus() == TradeRecord.TradeStatus.DELIVERED) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Cannot unassign a driver once the delivery is In Transit or Delivered."));
+        }
 
+        trade.setDriver(null);
 
         if (trade.getBuyer() != null) {
             trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
         } else {
-            trade.setTradeStatus(TradeRecord.TradeStatus.CREATED);
+            trade.setTradeStatus(TradeRecord.TradeStatus.PENDING); // Fixed from CREATED
         }
 
         tradeRepository.save(trade);
 
-        return ResponseEntity.ok(Map.of("message", "Driver has been unassigned successfully. Status updated."));
+        return ResponseEntity.ok(Map.of("message", "Driver has been unassigned successfully. Status reverted."));
     }
 
     @PostMapping("/{tradeId}/flag")
