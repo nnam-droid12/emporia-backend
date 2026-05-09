@@ -539,12 +539,19 @@ public class TradeController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Invalid delivery code. Ask the Buyer for the correct code."));
         }
 
-
         trade.setTradeStatus(TradeRecord.TradeStatus.DELIVERED);
-        trade.setPaymentStatus(TradeRecord.PaymentStatus. FULLY_RELEASED);
+        trade.setPaymentStatus(TradeRecord.PaymentStatus.FULLY_RELEASED);
         tradeRepository.save(trade);
 
-        return ResponseEntity.ok(Map.of("message", "Delivery confirmed securely! Funds released to Seller."));
+        String exactDate = trade.getDeliveryDate() != null ? trade.getDeliveryDate().toString() : "Date not set";
+
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Goods have been delivered successfully! Delivery confirmed securely.",
+                "scheduledDeliveryDate", exactDate,
+                "tradeStatus", trade.getTradeStatus().name(),
+                "paymentStatus", trade.getPaymentStatus().name()
+        ));
     }
 
 
