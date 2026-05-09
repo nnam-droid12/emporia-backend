@@ -84,7 +84,8 @@ public class TradeRecord {
     @PrePersist
     public void prePersist() {
         if(this.paymentStatus == null) this.paymentStatus = PaymentStatus.PENDING;
-        if(this.tradeStatus == null) this.tradeStatus = TradeStatus.CREATED;
+
+        if(this.tradeStatus == null) this.tradeStatus = TradeStatus.PENDING;
 
         if(this.amountReleased == null) this.amountReleased = 0.0;
     }
