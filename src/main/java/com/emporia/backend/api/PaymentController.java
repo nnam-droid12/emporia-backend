@@ -284,6 +284,68 @@ public class PaymentController {
         }
     }
 
+
+    @GetMapping("/buyer/{tradeId}/payment-details")
+    public ResponseEntity<?> getBuyerPaymentDetails(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String buyerPhone = jwtService.extractPhoneNumber(token);
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found"));
+
+        TradeRecord trade = tradeOpt.get();
+
+        if (trade.getBuyer() == null || !trade.getBuyer().getPhoneNumber().equals(buyerPhone)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. You are not the assigned Buyer for this trade."));
+        }
+
+        return buildPaymentDetailsResponse(trade);
+    }
+
+
+    @GetMapping("/seller/{tradeId}/payment-details")
+    public ResponseEntity<?> getSellerPaymentDetails(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String sellerPhone = jwtService.extractPhoneNumber(token);
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found"));
+
+        TradeRecord trade = tradeOpt.get();
+
+        if (trade.getSeller() == null || !trade.getSeller().getPhoneNumber().equals(sellerPhone)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. You are not the assigned Seller for this trade."));
+        }
+
+        return buildPaymentDetailsResponse(trade);
+    }
+
+
+    private ResponseEntity<?> buildPaymentDetailsResponse(TradeRecord trade) {
+        double totalAmount = trade.getAmount() != null ? trade.getAmount() : 0.0;
+        double amountReleased = trade.getAmountReleased() != null ? trade.getAmountReleased() : 0.0;
+        double pendingBalance = totalAmount - amountReleased;
+
+        boolean isEscrowSecured = trade.getPaymentStatus() != TradeRecord.PaymentStatus.PENDING;
+
+        return ResponseEntity.ok(Map.of(
+                "tradeId", trade.getTradeId(),
+                "goodsType", trade.getGoodsType(),
+                "paymentStatus", trade.getPaymentStatus().name(),
+                "totalAmount", totalAmount,
+                "amountReleased", amountReleased,
+                "pendingBalance", pendingBalance,
+                "isEscrowSecured", isEscrowSecured
+        ));
+    }
+
+
     @Data
     public static class InitializePaymentRequest {
         private String email;
