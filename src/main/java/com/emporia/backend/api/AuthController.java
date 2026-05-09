@@ -1,9 +1,9 @@
 package com.emporia.backend.api;
 
-import com.emporia.backend.mcp.NokiaCamaraTools;
 import com.emporia.backend.model.SMEProfile;
 import com.emporia.backend.model.TradeInvite;
 import com.emporia.backend.model.TradeRecord;
+import com.emporia.backend.orchestrator.MasterAgent;
 import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.repository.TradeInviteRepository;
 import com.emporia.backend.repository.TradeRecordRepository;
@@ -25,27 +25,29 @@ public class AuthController {
     private final SMEProfileRepository profileRepository;
     private final TradeInviteRepository inviteRepository;
     private final JwtService jwtService;
-    private final NokiaCamaraTools nokiaCamaraTools;
+    private final MasterAgent masterAgent;
     private final TradeRecordRepository tradeRepository;
 
     @PostMapping("/seller/login")
     public ResponseEntity<?> sellerLogin(@RequestBody SellerLoginRequest request) {
 
-        if (nokiaCamaraTools.hasRecentSimSwap(request.getPhoneNumber())) {
+        // 1. SENTINEL AGENT: Fraud Detection
+        if (!masterAgent.executeFraudPreventionProtocol(request.getPhoneNumber())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of(
                             "swapped", true,
-                            "error", "SECURITY ALERT: Recent SIM Swap detected. Please use a different number. Account frozen."
+                            "error", "SECURITY ALERT: Recent SIM Swap detected by Sentinel Agent. Account frozen."
                     ));
         }
 
-        String decision = nokiaCamaraTools.verifyKycMatch(request.getPhoneNumber(), request.getBusinessName());
-        if (!decision.contains("APPROVED")) {
+        // 2. GATEKEEPER AGENT: Identity Verification
+        String gatekeeperDecision = masterAgent.executeIdentityProtocol(request.getPhoneNumber(), request.getBusinessName());
+        if (!gatekeeperDecision.contains("APPROVED")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "KYC Verification Failed via Nokia Telecom records."));
+                    .body(Map.of("error", "KYC Verification Failed by Gatekeeper Agent."));
         }
 
-        String extractedAddress = decision.split("\\|")[1].trim();
+        String extractedAddress = gatekeeperDecision.split("\\|")[1].trim();
 
         SMEProfile profile = profileRepository.findByPhoneNumber(request.getPhoneNumber())
                 .orElseGet(() -> profileRepository.save(SMEProfile.builder()
@@ -59,7 +61,7 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of(
                 "token", jwtService.generateToken(extraClaims, profile.getPhoneNumber()),
-                "message", "Seller Authenticated & Verified",
+                "message", "Seller Authenticated & Verified via Autonomous Agents",
                 "kycAddress", extractedAddress,
                 "role", profile.getRole().name()
         ));
@@ -68,16 +70,10 @@ public class AuthController {
     @PostMapping("/buyer/login")
     public ResponseEntity<?> buyerLogin(@RequestBody BuyerLoginRequest request) {
 
-        if (nokiaCamaraTools.hasRecentSimSwap(request.getPhoneNumber())) {
+        // 1. SENTINEL AGENT: Fraud Detection
+        if (!masterAgent.executeFraudPreventionProtocol(request.getPhoneNumber())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "SECURITY ALERT: Recent SIM Swap detected. Buyer account frozen."));
-        }
-
-        if (!nokiaCamaraTools.verifyPhoneNumber(request.getPhoneNumber())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of(
-                            "swapped", true,
-                            "error", "Phone Number Verification Failed."));
         }
 
         SMEProfile profile = profileRepository.findByPhoneNumber(request.getPhoneNumber())
@@ -100,13 +96,11 @@ public class AuthController {
                 TradeRecord trade = invite.getTradeRecord();
                 if (trade != null) {
                     trade.setBuyer(profile);
-
                     if (trade.getDriver() != null) {
                         trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_PENDING);
                     } else {
                         trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
                     }
-
                     tradeRepository.save(trade);
                 }
             } else {
@@ -127,20 +121,15 @@ public class AuthController {
         ));
     }
 
-
     @PostMapping("/driver/login")
     public ResponseEntity<?> driverLogin(@RequestBody DriverLoginRequest request) {
 
-        if (nokiaCamaraTools.hasRecentSimSwap(request.getPhoneNumber())) {
+        // 1. SENTINEL AGENT: Fraud Detection
+        if (!masterAgent.executeFraudPreventionProtocol(request.getPhoneNumber())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of(
                             "swapped", true,
                             "error", "SECURITY ALERT: Recent SIM Swap detected. Driver account frozen for investigation."));
-        }
-
-        if (!nokiaCamaraTools.verifyPhoneNumber(request.getPhoneNumber())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Phone Number Verification Failed."));
         }
 
         SMEProfile profile = profileRepository.findByPhoneNumber(request.getPhoneNumber())
@@ -163,9 +152,7 @@ public class AuthController {
                 TradeRecord trade = invite.getTradeRecord();
                 if (trade != null) {
                     trade.setDriver(profile);
-
                     trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_PENDING);
-
                     tradeRepository.save(trade);
                 }
             } else {
@@ -185,7 +172,6 @@ public class AuthController {
         ));
     }
 
-    // --- DTOs ---
     @Data
     public static class SellerLoginRequest {
         private String phoneNumber;

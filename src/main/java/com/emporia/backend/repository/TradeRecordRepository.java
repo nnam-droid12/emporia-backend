@@ -16,6 +16,7 @@ public interface TradeRecordRepository extends JpaRepository<TradeRecord, Long> 
     List<TradeRecord> findByBuyer(SMEProfile buyer);
     Optional<TradeRecord> findByTradeId(String tradeId);
 
+
     @Query("SELECT DISTINCT t.buyer FROM TradeRecord t WHERE t.seller = :seller AND t.buyer IS NOT NULL")
     List<SMEProfile> findDistinctBuyersBySeller(@Param("seller") SMEProfile seller);
 
@@ -23,4 +24,6 @@ public interface TradeRecordRepository extends JpaRepository<TradeRecord, Long> 
     List<SMEProfile> findDistinctDriversBySeller(@Param("seller") SMEProfile seller);
 
     List<TradeRecord> findByDriver(SMEProfile driver);
+
+
 }

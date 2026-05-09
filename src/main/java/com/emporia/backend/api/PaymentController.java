@@ -16,6 +16,7 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -285,6 +286,10 @@ public class PaymentController {
     }
 
 
+    // ==========================================
+    // BUYER ENDPOINTS
+    // ==========================================
+
     @GetMapping("/buyer/{tradeId}/payment-details")
     public ResponseEntity<?> getBuyerPaymentDetails(
             @RequestHeader("Authorization") String authHeader,
@@ -299,10 +304,29 @@ public class PaymentController {
         TradeRecord trade = tradeOpt.get();
 
         if (trade.getBuyer() == null || !trade.getBuyer().getPhoneNumber().equals(buyerPhone)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. You are not the assigned Buyer for this trade."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied."));
         }
 
-        return buildPaymentDetailsResponse(trade);
+        return ResponseEntity.ok(buildPaymentDetailsMap(trade));
+    }
+
+    @GetMapping("/buyer/all/payment-details")
+    public ResponseEntity<?> getAllBuyerPaymentDetails(@RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        String buyerPhone = jwtService.extractPhoneNumber(token);
+
+        Optional<SMEProfile> buyerOpt = profileRepository.findByPhoneNumber(buyerPhone);
+        if (buyerOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Buyer profile not found"));
+
+        List<TradeRecord> trades = tradeRepository.findByBuyer(buyerOpt.get());
+
+        // Map the list of TradeRecords into a list of cleanly formatted Maps
+        List<Map<String, Object>> responseList = trades.stream()
+                .map(this::buildPaymentDetailsMap)
+                .toList();
+
+        return ResponseEntity.ok(responseList);
     }
 
 
@@ -320,10 +344,28 @@ public class PaymentController {
         TradeRecord trade = tradeOpt.get();
 
         if (trade.getSeller() == null || !trade.getSeller().getPhoneNumber().equals(sellerPhone)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. You are not the assigned Seller for this trade."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied."));
         }
 
-        return buildPaymentDetailsResponse(trade);
+        return ResponseEntity.ok(buildPaymentDetailsMap(trade));
+    }
+
+    @GetMapping("/seller/all/payment-details")
+    public ResponseEntity<?> getAllSellerPaymentDetails(@RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        String sellerPhone = jwtService.extractPhoneNumber(token);
+
+        Optional<SMEProfile> sellerOpt = profileRepository.findByPhoneNumber(sellerPhone);
+        if (sellerOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Seller profile not found"));
+
+        List<TradeRecord> trades = tradeRepository.findBySeller(sellerOpt.get());
+
+        List<Map<String, Object>> responseList = trades.stream()
+                .map(this::buildPaymentDetailsMap)
+                .toList();
+
+        return ResponseEntity.ok(responseList);
     }
 
 
@@ -345,6 +387,24 @@ public class PaymentController {
         ));
     }
 
+
+    private Map<String, Object> buildPaymentDetailsMap(TradeRecord trade) {
+        double totalAmount = trade.getAmount() != null ? trade.getAmount() : 0.0;
+        double amountReleased = trade.getAmountReleased() != null ? trade.getAmountReleased() : 0.0;
+        double pendingBalance = totalAmount - amountReleased;
+
+        boolean isEscrowSecured = trade.getPaymentStatus() != TradeRecord.PaymentStatus.PENDING;
+
+        return Map.of(
+                "tradeId", trade.getTradeId(),
+                "goodsType", trade.getGoodsType(),
+                "paymentStatus", trade.getPaymentStatus().name(),
+                "totalAmount", totalAmount,
+                "amountReleased", amountReleased,
+                "pendingBalance", pendingBalance,
+                "isEscrowSecured", isEscrowSecured
+        );
+    }
 
     @Data
     public static class InitializePaymentRequest {

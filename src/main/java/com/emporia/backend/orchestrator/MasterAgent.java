@@ -14,37 +14,32 @@ public class MasterAgent {
     private final SentinelAgent sentinelAgent;
 
     /**
-     * This is called when a new user signs up or a trade is created.
+     * Called during Login/Signup. Returns the raw string so we can extract the KYC Address.
      */
-    public boolean executeIdentityProtocol(String phoneNumber, String name) {
+    public String executeIdentityProtocol(String phoneNumber, String name) {
         log.info("MasterAgent: Triggering Gatekeeper Identity Protocol for {}", phoneNumber);
         String decision = gatekeeperAgent.evaluateIdentity(phoneNumber, name);
-
         log.info("Gatekeeper Response: {}", decision);
-        return decision.contains("APPROVED");
+        return decision;
     }
 
     /**
-     * This is called from a cron job or when a Buyer clicks "Check Delivery Status"
+     * Called to verify if a driver is actually at the destination coordinates.
      */
     public boolean executeLogisticsProtocol(String driverPhone, double buyerLat, double buyerLon) {
         log.info("MasterAgent: Triggering Navigator Logistics Protocol for Driver {}", driverPhone);
         String decision = navigatorAgent.verifyDeliveryLocation(driverPhone, buyerLat, buyerLon);
-
         log.info("Navigator Response: {}", decision);
         return decision.contains("ARRIVED");
     }
 
     /**
-     * This is called EXACTLY before Paystack transfer is initiated in the PaymentController
+     * Called before Login or Escrow Payout to ensure the phone hasn't been hijacked.
      */
-    public boolean executeFraudPreventionProtocol(String sellerPhone) {
-        log.info("MasterAgent: Triggering Sentinel Fraud Protocol for Seller {}", sellerPhone);
-        String decision = sentinelAgent.checkSimSwapRisk(sellerPhone);
-
+    public boolean executeFraudPreventionProtocol(String phone) {
+        log.info("MasterAgent: Triggering Sentinel Fraud Protocol for {}", phone);
+        String decision = sentinelAgent.checkSimSwapRisk(phone);
         log.info("Sentinel Response: {}", decision);
-
-        // Return true if it is safe to pay out
         return decision.contains("SAFE");
     }
 }

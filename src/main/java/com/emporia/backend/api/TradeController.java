@@ -3,6 +3,7 @@ package com.emporia.backend.api;
 import com.emporia.backend.model.SMEProfile;
 import com.emporia.backend.model.TradeInvite;
 import com.emporia.backend.model.TradeRecord;
+import com.emporia.backend.orchestrator.MasterAgent;
 import com.emporia.backend.repository.SMEProfileRepository;
 import com.emporia.backend.repository.TradeInviteRepository;
 import com.emporia.backend.repository.TradeRecordRepository;
@@ -31,6 +32,7 @@ public class TradeController {
     private final TradeRecordRepository tradeRepository;
     private final JwtService jwtService;
     private final NotificationService notificationService;
+    private final MasterAgent masterAgent;
 
 
     @PostMapping("/create")
@@ -804,6 +806,57 @@ public class TradeController {
 
         return ResponseEntity.ok(response);
     }
+
+
+
+    @PostMapping("/{tradeId}/verify-arrival")
+    public ResponseEntity<?> verifyDriverArrival(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found."));
+
+        TradeRecord trade = tradeOpt.get();
+
+        if (trade.getTradeStatus() != TradeRecord.TradeStatus.IN_TRANSIT) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Cannot verify arrival. Goods are not currently in transit."));
+        }
+
+        if (trade.getLatitude() == null || trade.getLongitude() == null || trade.getDriver() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing driver or delivery coordinates."));
+        }
+
+        boolean hasArrived = masterAgent.executeLogisticsProtocol(
+                trade.getDriver().getPhoneNumber(),
+                trade.getLatitude(),
+                trade.getLongitude()
+        );
+
+        if (hasArrived) {
+            trade.setTradeStatus(TradeRecord.TradeStatus.DELIVERED);
+            tradeRepository.save(trade);
+
+            if (trade.getBuyer().getFcmToken() != null) {
+                notificationService.sendPushNotification(
+                        trade.getBuyer().getFcmToken(),
+                        "Delivery Arrived!",
+                        "The driver has been verified at your location. Please inspect the goods."
+                );
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Driver location verified by AI Agent. Trade marked as DELIVERED.",
+                    "tradeStatus", trade.getTradeStatus().name()
+            ));
+        } else {
+            return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(Map.of(
+                    "error", "Location verification failed. The driver is not yet within the destination radius."
+            ));
+        }
+    }
+
+
 
 
     private double[] simulateGeocoding(String address) {
