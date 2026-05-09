@@ -587,6 +587,45 @@ public class TradeController {
     }
 
 
+    @PostMapping("/{tradeId}/unflag")
+    public ResponseEntity<?> unflagTrade(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String tradeId) {
+
+        String token = authHeader.substring(7);
+        String buyerPhoneNumber = jwtService.extractPhoneNumber(token);
+
+        Optional<TradeRecord> tradeOpt = tradeRepository.findByTradeId(tradeId);
+        if (tradeOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Trade not found"));
+
+        TradeRecord trade = tradeOpt.get();
+
+        if (trade.getBuyer() == null || !trade.getBuyer().getPhoneNumber().equals(buyerPhoneNumber)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only the assigned Buyer can unflag this trade."));
+        }
+
+        if (trade.getTradeStatus() != TradeRecord.TradeStatus.FLAGGED) {
+            return ResponseEntity.badRequest().body(Map.of("error", "This trade is not currently flagged."));
+        }
+
+        if (trade.getDriver() != null) {
+
+            trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_PENDING);
+        } else {
+            trade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
+        }
+
+        trade.setFlagReason(null);
+
+        tradeRepository.save(trade);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Trade dispute resolved. The trade has been unflagged successfully.",
+                "tradeStatus", trade.getTradeStatus().name()
+        ));
+    }
+
+
     @GetMapping("/{tradeId}/view-dispute")
     public ResponseEntity<?> getTradeDispute(
             @RequestHeader("Authorization") String authHeader,
