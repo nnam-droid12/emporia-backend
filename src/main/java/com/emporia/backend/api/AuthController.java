@@ -97,14 +97,25 @@ public class AuthController {
     @PostMapping("/driver/login")
     public ResponseEntity<?> driverLogin(@RequestBody DriverLoginRequest request) {
 
-        SMEProfile profile = profileRepository.findByPhoneNumber(request.getPhoneNumber())
-                .orElseGet(() -> profileRepository.save(SMEProfile.builder()
-                        .phoneNumber(request.getPhoneNumber())
-                        .businessName(request.getBusinessName())
-                        .role(SMEProfile.Role.DRIVER)
-                        .kycVerified(false)
-                        .build()));
+        Optional<SMEProfile> profileOpt = profileRepository.findByPhoneNumber(request.getPhoneNumber());
+        SMEProfile profile;
 
+        if (profileOpt.isPresent()) {
+            profile = profileOpt.get();
+
+            if (profile.getRole() != SMEProfile.Role.DRIVER) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "This phone number is already registered as a " + profile.getRole().name() + ". Please use a different phone number."));
+            }
+        } else {
+
+            profile = profileRepository.save(SMEProfile.builder()
+                    .phoneNumber(request.getPhoneNumber())
+                    .businessName(request.getBusinessName())
+                    .role(SMEProfile.Role.DRIVER)
+                    .kycVerified(false)
+                    .build());
+        }
 
         if (request.getLinkCode() != null && !request.getLinkCode().isEmpty()) {
             Optional<TradeInvite> inviteOpt = inviteRepository.findByInviteCodeAndIsUsedFalse(request.getLinkCode());
@@ -126,7 +137,10 @@ public class AuthController {
             }
         }
 
-        Map<String, Object> extraClaims = Map.of("role", profile.getRole().name(), "businessName", profile.getBusinessName());
+        Map<String, Object> extraClaims = Map.of(
+                "role", profile.getRole().name(),
+                "businessName", profile.getBusinessName()
+        );
 
         return ResponseEntity.ok(Map.of(
                 "token", jwtService.generateToken(extraClaims, profile.getPhoneNumber()),
