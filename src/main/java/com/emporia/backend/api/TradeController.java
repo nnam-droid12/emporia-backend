@@ -93,12 +93,12 @@ public class TradeController {
             savedTrade.setTradeStatus(TradeRecord.TradeStatus.BUYER_JOINED);
             tradeRepository.save(savedTrade);
 
-            if (seller.getFcmToken() != null) {
-                String buyerName = buyerProfile.getPersonalName() != null ? buyerProfile.getPersonalName() : "A buyer";
-                String title = "Emporia Trade Update";
-                String body = String.format("%s has successfully joined the trade for %s purchase.", buyerName, savedTrade.getGoodsType());
+            if (buyerProfile.getFcmToken() != null) {
+                String title = "New Trade Request 🤝";
+                String body = String.format("%s has created a trade for %s (x%d). Tap to review and fund the escrow.",
+                        seller.getBusinessName(), savedTrade.getGoodsType(), savedTrade.getQuantity());
 
-                notificationService.sendPushNotification(seller.getFcmToken(), title, body);
+                notificationService.sendPushNotification(buyerProfile.getFcmToken(), title, body);
             }
 
             return ResponseEntity.ok(Map.of(
@@ -415,6 +415,14 @@ public class TradeController {
         trade.setTradeStatus(TradeRecord.TradeStatus.DRIVER_PENDING);
         tradeRepository.save(trade);
 
+        if (driverOpt.get().getFcmToken() != null) {
+            notificationService.sendPushNotification(
+                    driverOpt.get().getFcmToken(),
+                    "New Delivery Request 🚚",
+                    "You have been assigned to trade " + trade.getTradeId() + ". Please open Emporia to accept or reject."
+            );
+        }
+
         return ResponseEntity.ok(Map.of(
                 "message", "Assignment sent to driver. Waiting for their acceptance.",
                 "tradeStatus", trade.getTradeStatus().name()
@@ -445,6 +453,14 @@ public class TradeController {
 
         trade.setTradeStatus(TradeRecord.TradeStatus.IN_TRANSIT);
         tradeRepository.save(trade);
+
+        if (trade.getSeller().getFcmToken() != null) {
+            notificationService.sendPushNotification(
+                    trade.getSeller().getFcmToken(),
+                    "Driver En Route ✅",
+                    "The driver has accepted trade " + trade.getTradeId() + ". The goods are now In Transit."
+            );
+        }
 
         return ResponseEntity.ok(Map.of(
                 "message", "You have successfully accepted the trade assignment. The goods are now In Transit.",
@@ -542,6 +558,15 @@ public class TradeController {
         trade.setTradeStatus(TradeRecord.TradeStatus.DELIVERED);
         trade.setPaymentStatus(TradeRecord.PaymentStatus.FULLY_RELEASED);
         tradeRepository.save(trade);
+
+
+        if (trade.getBuyer() != null && trade.getBuyer().getFcmToken() != null) {
+            notificationService.sendPushNotification(
+                    trade.getBuyer().getFcmToken(),
+                    "Delivery Verified 📦",
+                    "Your 4-digit code was accepted. Escrow funds have been fully released to the seller."
+            );
+        }
 
         String exactDate = trade.getDeliveryDate() != null ? trade.getDeliveryDate().toString() : "Date not set";
 
