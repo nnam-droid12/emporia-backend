@@ -69,7 +69,8 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:5173",
                 "http://localhost:5174",
-                "https://emporia-frontend.vercel.app"
+                "https://emporia-frontend.vercel.app",
+                "http://127.0.0.1:5500"
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
