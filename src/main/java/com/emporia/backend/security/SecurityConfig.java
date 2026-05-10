@@ -29,6 +29,7 @@ public class SecurityConfig {
                                 "/api/v1/trade/**",
                                 "/api/v1/bank-account/**",
                                 "/api/v1/payment/**",
+
                                 "/error"
                         ).permitAll()
 
@@ -38,6 +39,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        .requestMatchers("/api/v1/notification/**").authenticated()
 
                         .anyRequest().authenticated()
                 )
