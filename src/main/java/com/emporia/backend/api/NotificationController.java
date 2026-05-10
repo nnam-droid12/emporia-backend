@@ -2,15 +2,14 @@ package com.emporia.backend.api;
 
 import com.emporia.backend.model.SMEProfile;
 import com.emporia.backend.repository.SMEProfileRepository;
-import com.emporia.backend.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -19,25 +18,19 @@ import java.util.Optional;
 public class NotificationController {
 
     private final SMEProfileRepository profileRepository;
-    private final JwtService jwtService;
 
     @PostMapping("/fcm-token")
     public ResponseEntity<?> updateFcmToken(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal SMEProfile profile) {
 
-        String token = authHeader.substring(7);
-        String phoneNumber = jwtService.extractPhoneNumber(token);
-
-        log.info("Received FCM token registration request for phone: {}", phoneNumber);
-
-        Optional<SMEProfile> profileOpt = profileRepository.findByPhoneNumber(phoneNumber);
-        if (profileOpt.isEmpty()) {
-            log.warn("Profile not found for phone: {}", phoneNumber);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Profile not found."));
+        if (profile == null) {
+            log.error("Authentication Principal is NULL. Security context is empty!");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized user."));
         }
 
-        SMEProfile profile = profileOpt.get();
+        log.info("Received FCM token registration request for phone: {}", profile.getPhoneNumber());
+
         String fcmToken = body.get("fcmToken");
 
         if (fcmToken == null || fcmToken.trim().isEmpty()) {
@@ -46,6 +39,7 @@ public class NotificationController {
         }
 
         log.info("Extracted Token: {}...", fcmToken.substring(0, Math.min(fcmToken.length(), 10)));
+
 
         profile.setFcmToken(fcmToken);
         profileRepository.save(profile);
