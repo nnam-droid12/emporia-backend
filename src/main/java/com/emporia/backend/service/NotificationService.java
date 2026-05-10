@@ -9,11 +9,6 @@ import org.springframework.stereotype.Service;
 public class NotificationService {
 
     public void sendPushNotification(String targetToken, String title, String body) {
-        if (targetToken == null || targetToken.isEmpty()) {
-            System.out.println("Cannot send notification: FCM Token is missing.");
-            return;
-        }
-
         try {
             Message message = Message.builder()
                     .setToken(targetToken)
@@ -21,6 +16,9 @@ public class NotificationService {
                             .setTitle(title)
                             .setBody(body)
                             .build())
+                    .putData("title", title)
+                    .putData("body", body)
+                    .putData("click_action", "FLUTTER_NOTIFICATION_CLICK")
                     .build();
 
             String response = FirebaseMessaging.getInstance().send(message);
